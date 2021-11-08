@@ -1,0 +1,14 @@
+
+
+
+Initialize ->
+
+when? -> before mainloop make function that check whether database exists. Date is taken at the begging of programm
+
+
+FIRST take input from existing database no matter what it's empty or it contain some data. -> Here create function that insert time of lectures into week. 
+
+
+SECONDLY Put taken data into entries 
+
+THIRDLY Wait for button to save the data. 
