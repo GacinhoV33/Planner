@@ -7,7 +7,7 @@
 #TODO
 import os
 from tkinter import *
-from settings import X_size, Y_size
+from settings import X_size, Y_size, monitor_width, monitor_height
 from PIL import Image, ImageTk
 import sqlite3
 from datetime import datetime
@@ -54,12 +54,16 @@ st_x = X_size//2
 st_y = Y_size//1.1
 save_x = X_size//1.2
 save_y = Y_size//1.1
-goals_x = X_size // 1.6
-goals_y = Y_size // 1.1
-goals_x_size = 720
-goals_y_size = 480
+goals_x = X_size//2.5
+goals_y = Y_size//1.1
+goals_x_size = 1000
+goals_y_size = 700
 short_tasks_x_size = 720
 short_tasks_y_size = 480
+screen_pos_x = monitor_width//2 - X_size //2
+screen_pos_y = monitor_height//2 - Y_size//2
+screen_pos_x_goals = monitor_width//2 - goals_x_size
+screen_pos_y_goals = monitor_height//2 - goals_y_size
 """
 FLAG RESPONSIBLE FOR DISPLAY
 1 -> All days
@@ -239,6 +243,8 @@ def Openday(n_button, root):
     root.destroy()
     if n_button == "Weekend":
         main_disp(3)
+    elif n_button is None:
+        main_disp(1)
     else:
         main_disp(2, int(n_button))
 
@@ -278,13 +284,10 @@ class TopButtons:
         self.all_buttons.append(self.saturday)
         self.all_buttons.append(self.sunday)
 
-
-        self.all = TkinterCustomButton(text="All days")
-        # self.week = TkinterCustomButton(text="Week")
+        self.all = TkinterCustomButton(text="All days", corner_radius=10, command=lambda: Openday(None, root))
         self.weekend = TkinterCustomButton(text="Weekend", corner_radius=10, command=lambda: Openday("Weekend", root))
 
         self.all.place(x=1020, y=button_pos_y/2)
-        # self.week.place(x=1160, y=button_pos_y/2)
         self.weekend.place(x=1160, y=button_pos_y/2)
 
 
@@ -357,6 +360,69 @@ def get_data_from_db(day: str):
     return data
 
 
+def add_goal_to_db(date: str, value: int, name: str, category: str):
+    conn = sqlite3.connect("database/goals.db")
+    c = conn.cursor()
+    c.execute("""INSERT INTO goals VALUES (?, ?, ?, ?)""", (date, value, name, category))
+    conn.commit()
+    conn.close()
+
+
+def delete_goal(name_: str):
+    conn = sqlite3.connect("database/goals.db")
+    c = conn.cursor()
+    c.execute("""DELETE from goals WHERE name=(?)""", name_)
+    conn.commit()
+    conn.close()
+
+
+def get_goals_data():
+    if os.path.exists("database/goals.db"):
+        conn = sqlite3.connect("database/goals.db")
+        c = conn.cursor()
+        c.execute("""SELECT * FROM goals """)
+        goals_db = c.fetchall()
+        conn.close()
+        return goals_db
+    else:
+        conn = sqlite3.connect("database/goals.db")
+        c = conn.cursor()
+        c.execute("""CREATE TABLE goals (
+        date text,
+        value INTEGER,
+        name text,
+        category text
+        
+        )""")
+        return list()
+
+
+def AddGoal():
+    Add = Toplevel()
+    Add.geometry("400x200")
+    Add.title("Add Goal")
+    Add.wm_attributes('-transparentcolor', '#ab23ff')
+
+    category, name, value = StringVar(), StringVar(), IntVar()
+    logo_goals = PhotoImage(file='Image/plus.jpg')
+    entry_name_label = Label(Add, text="Name:")
+    entry_name = Entry(Add)
+    entry_category_label = Label(Add, text="Category:")
+    entry_category = Entry(Add)
+    entry_value_label = Label(Add, text="Significance:")
+    entry_value = Entry(Add)
+
+    entry_name_label.place(x=10, y=10)
+    entry_category_label.place(x=10, y=40)
+    entry_value_label.place(x=10, y=70)
+    entry_name.place(x=85, y=10)
+    entry_category.place(x=85, y=40)
+    entry_value.place(x=85, y=70)
+    Add.tk.call('wm', 'iconphoto', Add._w, logo_goals)
+
+    Add.mainloop()
+
+
 def Goals():
     Goals = Toplevel()
     """LOGO"""
@@ -365,13 +431,16 @@ def Goals():
     Goals.tk.call('wm', 'iconphoto', Goals._w, logo_goals)
     """BACKGROUND"""
     Goals.title("Goals")
-    Goals.geometry(f"{goals_x_size}x{goals_y_size}")
+    Goals.geometry(f"{int(goals_x_size)}x{int(goals_y_size)}+{screen_pos_x_goals}+{screen_pos_y_goals}")
     bg_goals = ImageTk.PhotoImage(
-        (Image.open("Image/goals.jpg")).resize((goals_x_size, goals_y_size), Image.ANTIALIAS)
+        (Image.open("Image/goals2.png")).resize((int(goals_x_size), int(goals_y_size)), Image.ANTIALIAS)
     )
     goals_label = Label(Goals, image=bg_goals)
     goals_label.place(x=0, y=0)
 
+    goals_data_db = get_goals_data()
+    add_button = Button(Goals, text="Add Goal", command=AddGoal)
+    add_button.place(x=200, y=200)
     Goals.mainloop()
 
 
@@ -403,6 +472,7 @@ def main_disp(disp_flag, day_open=None):
     Getting data from database into python list.
     Each element of list contain database for specific day from Monday(0) to Sunday(7)
     """
+
     days_data = list()
     for day in days:
         check_db_exists(day)
@@ -412,7 +482,7 @@ def main_disp(disp_flag, day_open=None):
     """ INITIAL """
     root = Tk()
     root.title('Planner')
-    root.geometry(f'{X_size}x{Y_size}')
+    root.geometry(f'{X_size}x{Y_size}+{screen_pos_x}+{screen_pos_y}')
 
     """LOGO"""
     root.wm_attributes('-transparentcolor', '#ab23ff')
