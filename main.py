@@ -15,6 +15,9 @@ from datetime import date
 from tkinter_custom_button import TkinterCustomButton
 from tkinter import messagebox
 from source import get_key
+from tkcalendar import Calendar
+from Goal import Goal
+from CustomedOptionMenu import CustomedOptionMenu
 
 V = datetime.now().strftime("%V")
 today = date.today().strftime("%d/%m/%Y %H:%M:%S")
@@ -41,6 +44,9 @@ DAY_DICT = {"0" : "Monday",
             "5" : "Saturday",
             "6" : "Sunday"}
 
+"""Lists needed to dropwdown menus"""
+lst_of_categories = ['Sport', 'Cooking', 'Learning', 'Studies', 'Work', 'Fun', 'Workout']
+lst_of_statuses = ['Work in Progress', 'Done', 'Blocked', 'TODO', 'Retaken']
 
 """ SETTINGS """
 table_pos_x = 200
@@ -114,7 +120,7 @@ class Table:
 
     def write_data_from_db_into_entries(self): #NOT USED IN PROGRAMM - think about deleting it
         try:
-                conn = sqlite3.connect(f"database{TIME['MONTH']}-{TIME['WEEK']}")
+                conn = sqlite3.connect(f"database/{TIME['MONTH']}-{TIME['WEEK']}")
                 c = conn.cursor()
                 pon_data = [self.data_from_db[f'0{i}'] for i in range(18)]
                 c.executemany("INSERT INTO weekplanner VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", pon_data)
@@ -134,7 +140,7 @@ class Table:
                 #TODO
                 day_entry = tuple([str(hour.get()) for hour in self.all_entries[n]])
 
-                conn = sqlite3.connect(f"database{TIME['MONTH']}-{TIME['WEEK']}-{day}.db")
+                conn = sqlite3.connect(f"database/{TIME['MONTH']}-{TIME['WEEK']}-{day}.db")
                 c = conn.cursor()
 
                 c.execute("""INSERT INTO weekplanner VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", day_entry)
@@ -181,7 +187,7 @@ class TableDay:
             messagebox.showerror(title="Error", message=f"Error: {e}.\nDatabase update failed!!!")
 
     def write_data_from_db_into_entries(self): #NOT USED IN PROGRAMM - think about deleting it or reformating
-        conn = sqlite3.connect(f"database{TIME['MONTH']}-{TIME['WEEK']}-{self.day_open}")
+        conn = sqlite3.connect(f"database/{TIME['MONTH']}-{TIME['WEEK']}-{self.day_open}")
         c = conn.cursor()
         for entry in self.all_entries:
             # entry.insert
@@ -220,7 +226,7 @@ class TableWeekend:
                 print(n, day_w)
                 day_entry = tuple([str(hour.get()) for hour in self.all_entries[n]])
                 print(day_entry)
-                conn = sqlite3.connect(f"database{TIME['MONTH']}-{TIME['WEEK']}-{day_w}.db")
+                conn = sqlite3.connect(f"database/{TIME['MONTH']}-{TIME['WEEK']}-{day_w}.db")
                 c = conn.cursor()
 
                 c.execute("""INSERT INTO weekplanner VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", day_entry)
@@ -295,8 +301,8 @@ class TopButtons:
 
 
 def check_db_exists(day: str):
-    if not os.path.exists(f"database{TIME['MONTH']}-{TIME['WEEK']}-{day}.db"):
-        conn = sqlite3.connect(f"database{TIME['MONTH']}-{TIME['WEEK']}-{day}.db")
+    if not os.path.exists(f"database/{TIME['MONTH']}-{TIME['WEEK']}-{day}.db"):
+        conn = sqlite3.connect(f"database/{TIME['MONTH']}-{TIME['WEEK']}-{day}.db")
         c = conn.cursor()
         c.execute(""" CREATE TABLE weekplanner (
         hour67 text,
@@ -346,7 +352,7 @@ def insert_study(day):
             '-', '-', '-', '-', '-', '-', '-', '-', '-', ' -', '-', '-', '-', '-', '-', '-',
             '-', '-'),
     }
-    conn = sqlite3.connect(f"database{TIME['MONTH']}-{TIME['WEEK']}-{day}.db")
+    conn = sqlite3.connect(f"database/{TIME['MONTH']}-{TIME['WEEK']}-{day}.db")
     c = conn.cursor()
 
     c.execute(" INSERT INTO weekplanner VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", study_plan[day])
@@ -355,7 +361,7 @@ def insert_study(day):
 
 
 def get_data_from_db(day: str):
-    conn = sqlite3.connect(f"database{TIME['MONTH']}-{TIME['WEEK']}-{day}.db")
+    conn = sqlite3.connect(f"database/{TIME['MONTH']}-{TIME['WEEK']}-{day}.db")
     c = conn.cursor()
     c.execute(""" SELECT * FROM weekplanner""")
     data = c.fetchall()
@@ -363,17 +369,9 @@ def get_data_from_db(day: str):
     return data
 
 
-def add_goal_to_db(date_end: str, value: int, name: str, category: str):
-    conn = sqlite3.connect("database/goals.db")
-    if value > 10:
-        value = 10
-    elif value < 0:
-        value = 0
-    c = conn.cursor()
-    c.execute("""INSERT INTO goals VALUES (?, ?, ?, ?, ?)""", (date_end, value, name, category, f'{TIME["DAY"]}-{TIME["MONTH"]}-{TIME["YEAR"]}'))
-    conn.commit()
-    conn.close()
-    messagebox.showinfo("Goals", "Record successfully added to database")
+def create_goal(name: str, category: str, significance: float, start_date: str, end_date: str, status: str="WIP"):
+    goal = Goal(name, category, significance, start_date, end_date, status)
+    goal.add_to_database()
 
 
 def delete_goal(name_: str):
@@ -388,56 +386,64 @@ def get_goals_data():
     if os.path.exists("database/goals.db"):
         conn = sqlite3.connect("database/goals.db")
         c = conn.cursor()
-        c.execute("""SELECT * FROM goals """)
+        c.execute("""SELECT * FROM main_goals """)
         goals_db = c.fetchall()
         conn.close()
         return goals_db
     else:
         conn = sqlite3.connect("database/goals.db")
         c = conn.cursor()
-        c.execute("""CREATE TABLE goals (
-        date_end text,
-        value INTEGER,
+        c.execute("""CREATE TABLE main_goals (
         name text,
         category text,
-        date str
-        
+        significance REAL,
+        date_start text,
+        date_end text,
+        is_valid INTEGER,
+        status text
         )""")
         return list()
 
 
 def AddGoal():
-    Add = Toplevel()
-    Add.geometry("400x200")
+    Add = Tk()
+    Add.geometry("600x400")
     Add.title("Add Goal")
     Add.wm_attributes('-transparentcolor', '#ab23ff')
-    logo_goals = PhotoImage(file='Image/plus.jpg')
-    Add.tk.call('wm', 'iconphoto', Add._w, logo_goals)
-
-    goals_data = get_goals_data()
+    # logo_goals = PhotoImage(file='Image/plus.jpg')
+    # Add.tk.call('wm', 'iconphoto', Add._w, logo_goals)
+    #TODO
+    # img = ImageTk.PhotoImage(
+    #     (Image.open("Image/goals2.png")).resize((200, 100), Image.ANTIALIAS))
+    # goal_label = Label(Add, image=img)
+    # goal_label.place(x=350, y=50)
+    goals_data = get_goals_data() #TODELETE
     category, name, value = StringVar(), StringVar(), IntVar()
     entry_name_label = Label(Add, text="Name:")
     entry_name = Entry(Add)
-    entry_category_label = Label(Add, text="Category:")
-    entry_category = Entry(Add)
-    entry_value_label = Label(Add, text="Significance:")
-    entry_value = Entry(Add)
+    MenuCategory = CustomedOptionMenu(Add, 'Select Category', *lst_of_categories)
+    scale_significance = Scale(Add, from_=0, to=10, state=ACTIVE, orient=HORIZONTAL, label='Significance',
+                              resolution=0.5,
+                              troughcolor="#6580c3", bg="#425b9a", length=150)
     entry_date_end_label = Label(Add, text="End date:")
-    entry_date_end = Entry(Add)
+    StatusMenu = CustomedOptionMenu(Add, 'Select Status', *lst_of_statuses)
 
     entry_name_label.place(x=10, y=10)
-    entry_category_label.place(x=10, y=40)
-    entry_value_label.place(x=10, y=70)
     entry_name.place(x=85, y=10)
-    entry_category.place(x=85, y=40)
-    entry_value.place(x=85, y=70)
-    entry_date_end_label.place(x=10, y=100)
-    entry_date_end.place(x=85, y=100)
-    entry_date_end.insert(END, "dd-mm-yyyy")
+    MenuCategory.place(x=82, y=35)
+    scale_significance.place(x=84, y=70)
+    entry_date_end_label.place(x=10, y=130)
+    goal_calendar = Calendar(Add, selectmode='day', year=int(TIME['YEAR']), month=int(TIME['MONTH']), day=int(TIME['YEAR']))
+    goal_calendar.place(x=85, y=130)
+    StatusMenu.place(x=85, y=325)
 
-    Add_button = Button(Add, text="Add", command=lambda: add_goal_to_db(str(entry_date_end.get()), int(entry_value.get()),
-                                                str(entry_name.get()), str(entry_category.get())))
-    Add_button.place(x=350, y=100)
+    Add_button = TkinterCustomButton(master=Add, text="Create Goal", command=lambda: create_goal(str(entry_name.get()),
+                                    str(MenuCategory.var.get()), float(scale_significance.get()),
+                                    f'{TIME["YEAR"]}-{TIME["MONTH"]}-{TIME["DAY"]}',
+      f'20{goal_calendar.get_date().split("/")[2]}-{goal_calendar.get_date().split("/")[0]}-{goal_calendar.get_date().split("/")[1]}',
+                                                                                                 str(StatusMenu.var.get())))
+
+    Add_button.place(x=450, y=300)
 
     Add.mainloop()
 
