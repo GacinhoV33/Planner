@@ -85,7 +85,7 @@ fg_color = ("#002732", "#FFFFD6", "#FFE700", "#EEEEEE", "#3C3C3C", "#FFFFFF", "W
 class Table:
 
     def __init__(self, root, data_from_db):
-        self.all_entries = [[None for i in range(18)] for j in range(7)]
+        self.all_entries = [[None for _ in range(18)] for _ in range(7)]
         self.data_from_db = data_from_db # get data from parameters and update
         self.data_dict = {}
         """
@@ -95,6 +95,8 @@ class Table:
         """
 
         for i in range(7):
+            self.label = Label(root, text=f'{days[i]}', font=('Arial', 16))
+            self.label.place(x=table_pos_x + table_width//3.52 + i*(table_width+5) - len(days[i])*2, y=table_pos_y-table_height)
             for j in range(18):
                 self.all_entries[i][j] = Entry(root, fg=fg_color[i], bg=bg_color[i], font=('Helvetica', 16))
                 self.all_entries[i][j].place(x=table_pos_x + i*(table_width+5), y=table_pos_y+j*(table_height+5), width=table_width, height=table_height)
@@ -192,12 +194,13 @@ class TableWeekend:
         self.data_from_db_week = data_from_db_week
         self.all_entries = [[None for _ in range(18)] for _ in range(2)]
         self.data_dict = {}
-
+        print(len(data_from_db_week))
         for i in range(2):
             for j in range(18):
                 self.all_entries[i][j] = Entry(root, fg=fg_color[5+i], bg=bg_color[5+i], font=('Helvetica', 16))
                 self.all_entries[i][j].place(x=table_pos_x + i*(table_width_day//2+20), y=table_pos_y + j*(table_height+5), width=table_width_day//2, height=table_height)
-                self.all_entries[i][j].insert(END, self.data_from_db_week[i][j])
+                self.all_entries[i][j].insert(END, self.data_from_db_week[i][-1][j])
+                """ UWAGA - W liście siedzi krotka, dlatego trzeba użyć 0/1"""
 
     def get_data(self):
         """
@@ -234,7 +237,7 @@ class HourLabels:
 
         for i in range(18):
             self.label = Label(root, font=('Arial', 16), text=f'{i + 6}:00 - {i+7}:00')
-            self.label.place(x=10, y=table_pos_y + i*(table_height + 5))
+            self.label.place(x=30, y=table_pos_y + i*(table_height + 5))
 
 
 def Openday(n_button, root):
@@ -360,12 +363,17 @@ def get_data_from_db(day: str):
     return data
 
 
-def add_goal_to_db(date: str, value: int, name: str, category: str):
+def add_goal_to_db(date_end: str, value: int, name: str, category: str):
     conn = sqlite3.connect("database/goals.db")
+    if value > 10:
+        value = 10
+    elif value < 0:
+        value = 0
     c = conn.cursor()
-    c.execute("""INSERT INTO goals VALUES (?, ?, ?, ?)""", (date, value, name, category))
+    c.execute("""INSERT INTO goals VALUES (?, ?, ?, ?, ?)""", (date_end, value, name, category, f'{TIME["DAY"]}-{TIME["MONTH"]}-{TIME["YEAR"]}'))
     conn.commit()
     conn.close()
+    messagebox.showinfo("Goals", "Record successfully added to database")
 
 
 def delete_goal(name_: str):
@@ -388,10 +396,11 @@ def get_goals_data():
         conn = sqlite3.connect("database/goals.db")
         c = conn.cursor()
         c.execute("""CREATE TABLE goals (
-        date text,
+        date_end text,
         value INTEGER,
         name text,
-        category text
+        category text,
+        date str
         
         )""")
         return list()
@@ -402,15 +411,19 @@ def AddGoal():
     Add.geometry("400x200")
     Add.title("Add Goal")
     Add.wm_attributes('-transparentcolor', '#ab23ff')
-
-    category, name, value = StringVar(), StringVar(), IntVar()
     logo_goals = PhotoImage(file='Image/plus.jpg')
+    Add.tk.call('wm', 'iconphoto', Add._w, logo_goals)
+
+    goals_data = get_goals_data()
+    category, name, value = StringVar(), StringVar(), IntVar()
     entry_name_label = Label(Add, text="Name:")
     entry_name = Entry(Add)
     entry_category_label = Label(Add, text="Category:")
     entry_category = Entry(Add)
     entry_value_label = Label(Add, text="Significance:")
     entry_value = Entry(Add)
+    entry_date_end_label = Label(Add, text="End date:")
+    entry_date_end = Entry(Add)
 
     entry_name_label.place(x=10, y=10)
     entry_category_label.place(x=10, y=40)
@@ -418,7 +431,13 @@ def AddGoal():
     entry_name.place(x=85, y=10)
     entry_category.place(x=85, y=40)
     entry_value.place(x=85, y=70)
-    Add.tk.call('wm', 'iconphoto', Add._w, logo_goals)
+    entry_date_end_label.place(x=10, y=100)
+    entry_date_end.place(x=85, y=100)
+    entry_date_end.insert(END, "dd-mm-yyyy")
+
+    Add_button = Button(Add, text="Add", command=lambda: add_goal_to_db(str(entry_date_end.get()), int(entry_value.get()),
+                                                str(entry_name.get()), str(entry_category.get())))
+    Add_button.place(x=350, y=100)
 
     Add.mainloop()
 
@@ -439,6 +458,7 @@ def Goals():
     goals_label.place(x=0, y=0)
 
     goals_data_db = get_goals_data()
+    print(goals_data_db)
     add_button = Button(Goals, text="Add Goal", command=AddGoal)
     add_button.place(x=200, y=200)
     Goals.mainloop()
@@ -514,8 +534,8 @@ def main_disp(disp_flag, day_open=None):
         """
         DISPLAY WEEKEND TABLE in main screen
         """
-        print(days_data) #TODO HERE IS BUG
-        weekend_data = days_data[5:7][-1]
+        weekend_data = days_data[5:7]
+        print(weekend_data)
         table = TableWeekend(root, weekend_data)
 
     """Display Hours on the left side of screen"""
