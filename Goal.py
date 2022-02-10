@@ -12,10 +12,6 @@ class Goal:
         self.start_date = start_date
         self.end_date = end_date
         self.status = status
-        self.is_valid = True
-
-    def invalidate_goal(self):
-        self.is_valid = False
 
     def delete_goal(self):
         pass
@@ -31,10 +27,9 @@ class Goal:
         # elif value < 0:
         #     value = 0
         c = conn.cursor()
-        c.execute("""INSERT INTO main_goals VALUES (?, ?, ?, ?, ?, ?, ?)""", (self.name,
+        c.execute("""INSERT INTO main_goals VALUES (?, ?, ?, ?, ?, ?)""", (self.name,
                                                                          self.category, self.significance,
-                                                                         self.start_date, self.end_date, self.status,
-                                                                         int(self.is_valid)
+                                                                         self.start_date, self.end_date, self.status
                                                                          )
                   )
         conn.commit()

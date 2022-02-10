@@ -13,7 +13,7 @@ import sqlite3
 from datetime import datetime
 from datetime import date
 from tkinter_custom_button import TkinterCustomButton
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 from source import get_key
 from tkcalendar import Calendar
 from Goal import Goal
@@ -33,7 +33,8 @@ TIME = {"HOUR" : H,
         "DAY" : D_name,
         "YEAR" : Y,
         "WEEK" : V,
-        "MONTH" : M
+        "MONTH" : M,
+        "DAY_NUMB": D
         }
 
 DAY_DICT = {"0" : "Monday",
@@ -43,6 +44,8 @@ DAY_DICT = {"0" : "Monday",
             "4" : "Friday",
             "5" : "Saturday",
             "6" : "Sunday"}
+
+DAY_DICT_INV = {v: k for k, v in DAY_DICT.items()}# Inverted Dict of Days
 
 """Lists needed to dropwdown menus"""
 lst_of_categories = ['Sport', 'Cooking', 'Learning', 'Studies', 'Work', 'Fun', 'Workout']
@@ -369,6 +372,36 @@ def get_data_from_db(day: str):
     return data
 
 
+def time_left(time_start, time_end):
+    value = ''
+    y_diff = int(time_end[:4]) - int(time_start[0:4])
+    m_diff = int(time_end[5:7]) - int(time_start[5:7])
+    d_diff = int(time_end[8:10]) - int(time_start[8:10])
+
+    if y_diff >= 0 and m_diff >= 0 and d_diff >= 0:
+        value += str(str(y_diff) + "y ")
+        value += str(str(m_diff) + "m ")
+        value += str(str(d_diff) + "d")
+    elif y_diff >= 0 and m_diff < 0:
+        value += (str(y_diff - 1) + "y ")
+        m_diff = int(12 + time_end[5:7]) - int(time_start[5:7])
+        if d_diff >= 0:
+            value += (str(d_diff) + "d")
+            value += (str(m_diff) + "m ")
+        else:
+            m_diff -= 1
+            value += (str(m_diff) + "m ")
+            d_diff += 30
+            value += (str(d_diff) + "d")
+    elif d_diff < 0:
+        m_diff -= 1
+        d_diff += 30 # XD wstyd mi za ten kod
+        value += (str(y_diff) + "y ")
+        value += (str(m_diff) + "m ")
+        value += (str(d_diff) + "d")
+    return value
+
+
 def create_goal(name: str, category: str, significance: float, start_date: str, end_date: str, status: str="WIP"):
     goal = Goal(name, category, significance, start_date, end_date, status)
     goal.add_to_database()
@@ -389,6 +422,7 @@ def get_goals_data():
         c.execute("""SELECT * FROM main_goals """)
         goals_db = c.fetchall()
         conn.close()
+        print(goals_db)
         return goals_db
     else:
         conn = sqlite3.connect("database/goals.db")
@@ -399,7 +433,6 @@ def get_goals_data():
         significance REAL,
         date_start text,
         date_end text,
-        is_valid INTEGER,
         status text
         )""")
         return list()
@@ -417,8 +450,7 @@ def AddGoal():
     #     (Image.open("Image/goals2.png")).resize((200, 100), Image.ANTIALIAS))
     # goal_label = Label(Add, image=img)
     # goal_label.place(x=350, y=50)
-    goals_data = get_goals_data() #TODELETE
-    category, name, value = StringVar(), StringVar(), IntVar()
+    # category, name, value = StringVar(), StringVar(), IntVar() #TODELETE
     entry_name_label = Label(Add, text="Name:")
     entry_name = Entry(Add)
     MenuCategory = CustomedOptionMenu(Add, 'Select Category', *lst_of_categories)
@@ -433,14 +465,23 @@ def AddGoal():
     MenuCategory.place(x=82, y=35)
     scale_significance.place(x=84, y=70)
     entry_date_end_label.place(x=10, y=130)
-    goal_calendar = Calendar(Add, selectmode='day', year=int(TIME['YEAR']), month=int(TIME['MONTH']), day=int(TIME['YEAR']))
+    goal_calendar = Calendar(Add, selectmode='day', year=int(TIME['YEAR']), month=int(TIME['MONTH']),
+                             day=int(TIME['DAY_NUMB']))
     goal_calendar.place(x=85, y=130)
     StatusMenu.place(x=85, y=325)
 
+    def day_to_numb(day_number):
+        if len(day_number) == 2:
+            return day_number
+        elif len(day_number) == 1:
+            return "0"+day_number
+        else:
+            raise ValueError()
+
     Add_button = TkinterCustomButton(master=Add, text="Create Goal", command=lambda: create_goal(str(entry_name.get()),
                                     str(MenuCategory.var.get()), float(scale_significance.get()),
-                                    f'{TIME["YEAR"]}-{TIME["MONTH"]}-{TIME["DAY"]}',
-      f'20{goal_calendar.get_date().split("/")[2]}-{goal_calendar.get_date().split("/")[0]}-{goal_calendar.get_date().split("/")[1]}',
+                                    f'{TIME["YEAR"]}-{TIME["MONTH"]}-{TIME["DAY_NUMB"]}',
+      f'20{goal_calendar.get_date().split("/")[2]}-{day_to_numb(goal_calendar.get_date().split("/")[0])}-{day_to_numb(goal_calendar.get_date().split("/")[1])}',
                                                                                                  str(StatusMenu.var.get())))
 
     Add_button.place(x=450, y=300)
@@ -463,10 +504,30 @@ def Goals():
     goals_label = Label(Goals, image=bg_goals)
     goals_label.place(x=0, y=0)
 
+
+    add_button = TkinterCustomButton(master=Goals, text="Add Goal", command=AddGoal)
+    add_button.place(x=int(goals_x_size/1.2), y=int(goals_y_size/1.1))
+
+    """TABLE OF GOALS"""
+    # Querying data from database
     goals_data_db = get_goals_data()
-    print(goals_data_db)
-    add_button = Button(Goals, text="Add Goal", command=AddGoal)
-    add_button.place(x=200, y=200)
+
+    Goals_table = ttk.Treeview(Goals)
+    # Goals_table_label.place()
+    Goals_table['columns'] = ('Goal', 'Category', 'Significance', 'Start date', 'End date', 'Status', 'Time left')
+
+    goals_atributes_lst = ['Goal', 'Category', 'Significance', 'Start date', 'End date', 'Status', 'Time left']
+
+    """HEADERS OF COLUMNS"""
+    Goals_table.column("#0", width=0, stretch=NO)
+    for atribute in goals_atributes_lst:
+        Goals_table.column(atribute, anchor=CENTER, width=120)
+        Goals_table.heading(atribute, text=atribute, anchor=CENTER)
+
+    for goal_id, goal in enumerate(goals_data_db):
+        Goals_table.insert(parent='', index='end', iid=goal_id, text='', values=(*goal, time_left(goal[3], goal[4])))
+
+    Goals_table.place(x=int(goals_x_size/15), y=int(goals_y_size/8))
     Goals.mainloop()
 
 
@@ -483,7 +544,7 @@ def ShortTasks():
         (Image.open("Image/slight.jpg")).resize((short_tasks_x_size, short_tasks_y_size), Image.ANTIALIAS)
     )
     goals_label = Label(ShortTasks, image=bg_ShortTasks)
-    goals_label.place(x=0, y=0)
+    goals_label.place(x=int(goals_x_size/1.1), y=int(goals_y_size/1.1))
 
     ShortTasks.mainloop()
 
