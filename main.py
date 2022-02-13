@@ -502,17 +502,19 @@ def goals_change_status(Goals_table, new_status=None):
     :param Goals_table: which is Tkinter Table with chosen row
     :return:
     """
-
     curItem = Goals_table.focus() # This return Tkinter item
     dict_table = Goals_table.item(curItem) #This make curItem a dictionary
     if len(dict_table['values']) == 0:
         messagebox.showerror('Please select a goal!')
     else:
         """ Step 2 """
-        curr_status, name_of_goal = dict_table['values'][5], dict_table['values'][0]
+        curr_status, name_of_goal = str(dict_table['values'][5]), str(dict_table['values'][0])
         """ Step 3 """
         conn = sqlite3.connect("database/goals.db")
         c = conn.cursor()
+        c.execute("""UPDATE main_goals SET status = ?
+            WHERE name = ?
+        """,  (new_status, name_of_goal))
 
         """ Step 4 """
         #TODO
@@ -529,12 +531,29 @@ def goals_delete(Goals_table):
     if len(dict_table['values']) == 0:
         messagebox.showerror('Please select a goal!')
     else:
-        pass
-    #TODO
+        name_of_goal = str(dict_table['values'][0])
+        conn = sqlite3.connect('database/goals.db')
+        c = conn.cursor()
+        c.execute(""" DELETE from main_goals WHERE name = ?
+        """, (name_of_goal,))
+        conn.commit()
+        conn.close()
 
 
-def goals_WIP():
-    pass
+def goals_WIP(master, goals_table, selected_status='Work in Progress'):
+    """
+    This function querying data from database and showing table only for chosen status
+    :param selected_status:
+    :param master:
+    :param goals_table:
+    :return:
+    """
+    conn = sqlite3.connect('database/goals.db')
+    c = conn.cursor()
+    c.execute("""SELECT * FROM main_goals WHERE status = ?
+    """, (selected_status,))
+    selected_goals = c.fetchall()
+    print(selected_goals)
 
 
 def Goals():
@@ -545,7 +564,7 @@ def Goals():
     Goals.tk.call('wm', 'iconphoto', Goals._w, logo_goals)
     """BACKGROUND"""
     Goals.title("Goals")
-    Goals.geometry(f"{int(goals_x_size)}x{int(goals_y_size)}+{screen_pos_x_goals}+{screen_pos_y_goals}")
+    Goals.geometry(f"{int(goals_x_size)}x{int(goals_y_size)}+{screen_pos_x}+{screen_pos_y}")
     bg_goals = ImageTk.PhotoImage(
         (Image.open("Image/goals2.png")).resize((int(goals_x_size), int(goals_y_size)), Image.ANTIALIAS)
     )
@@ -554,7 +573,7 @@ def Goals():
 
 
     add_button = TkinterCustomButton(master=Goals, text="Add Goal", command=AddGoal)
-    add_button.place(x=int(goals_x_size/1.2), y=int(goals_y_size/1.1))
+    add_button.place(x=int(goals_x_size/1.2), y=int(goals_y_size/1.3))
 
     """TABLE OF GOALS"""
     # Querying data from database
@@ -575,18 +594,21 @@ def Goals():
     for goal_id, goal in enumerate(goals_data_db):
         Goals_table.insert(parent='', index='end', iid=goal_id, text='', values=(*goal, time_left(goal[3], goal[4])))
 
+    Goals_table.place(x=int(goals_x_size/15), y=int(goals_y_size/8))
     """Buttons for changing goals status"""
 
-    ChagneStatusButton = TkinterCustomButton(master=Goals, text='Change Status', command=lambda: goals_change_status(Goals_table))
-    ChagneStatusButton.place(x=int(goals_x_size/10), y=int(goals_y_size/1.1))
-    Goals_table.place(x=int(goals_x_size/15), y=int(goals_y_size/8))
+    StatusMenu = CustomedOptionMenu(Goals, 'Select Status', *lst_of_statuses)
+    StatusMenu.place(x=int(goals_x_size / 10.5), y=int(goals_y_size / 1.17))
 
+    ChagneStatusButton = TkinterCustomButton(master=Goals, text='Change Status',
+                                             command=lambda: goals_change_status(Goals_table, StatusMenu.var.get()))
+    ChagneStatusButton.place(x=int(goals_x_size / 10), y=int(goals_y_size / 1.3))
 
-    DeleteGoalButton = TkinterCustomButton(master=Goals, text='Delete Goal', command= lambda: goals_delete(Goals_table))
-    DeleteGoalButton.place(x=int(goals_x_size/4.3), y=int(goals_y_size/1.1))
+    DeleteGoalButton = TkinterCustomButton(master=Goals, text='Delete Goal', command=lambda: goals_delete(Goals_table))
+    DeleteGoalButton.place(x=int(goals_x_size/4.3), y=int(goals_y_size/1.3))
 
-    ShowWIPButton = TkinterCustomButton(master=Goals, text='Working in Progress', command=goals_WIP, width=int(goals_x_size/6))
-    ShowWIPButton.place(x=int(goals_x_size/2.77), y=int(goals_y_size/1.1))
+    ShowWIPButton = TkinterCustomButton(master=Goals, text='Working in Progress', command=lambda: goals_WIP(Goals, Goals_table, "Work in Progress"), width=int(goals_x_size/6))
+    ShowWIPButton.place(x=int(goals_x_size/2.77), y=int(goals_y_size/1.3))
 
     Goals.mainloop()
 
