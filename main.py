@@ -489,6 +489,54 @@ def AddGoal():
     Add.mainloop()
 
 
+def goals_change_status(Goals_table, new_status=None):
+    """
+    This function is responsible for changing status of chosen task
+    Steps:
+    1. Check whether task is chosen, if not show error info and stop
+    2. Gets value from tkinter table
+    3. Connect to database, and find value by name
+    4. Make a change in db or delete old task and create new -> first option prefferable
+    5. Make a commit and close database
+    6. Show message info that everything went okay
+    :param Goals_table: which is Tkinter Table with chosen row
+    :return:
+    """
+
+    curItem = Goals_table.focus() # This return Tkinter item
+    dict_table = Goals_table.item(curItem) #This make curItem a dictionary
+    if len(dict_table['values']) == 0:
+        messagebox.showerror('Please select a goal!')
+    else:
+        """ Step 2 """
+        curr_status, name_of_goal = dict_table['values'][5], dict_table['values'][0]
+        """ Step 3 """
+        conn = sqlite3.connect("database/goals.db")
+        c = conn.cursor()
+
+        """ Step 4 """
+        #TODO
+        """ Step 5 """
+        conn.commit()
+        conn.close()
+        """ Step 6 """
+        messagebox.showinfo('Goal status changed successfully!')
+
+
+def goals_delete(Goals_table):
+    curItem = Goals_table.focus()  # This return Tkinter item
+    dict_table = Goals_table.item(curItem)  # This make curItem a dictionary
+    if len(dict_table['values']) == 0:
+        messagebox.showerror('Please select a goal!')
+    else:
+        pass
+    #TODO
+
+
+def goals_WIP():
+    pass
+
+
 def Goals():
     Goals = Toplevel()
     """LOGO"""
@@ -527,7 +575,19 @@ def Goals():
     for goal_id, goal in enumerate(goals_data_db):
         Goals_table.insert(parent='', index='end', iid=goal_id, text='', values=(*goal, time_left(goal[3], goal[4])))
 
+    """Buttons for changing goals status"""
+
+    ChagneStatusButton = TkinterCustomButton(master=Goals, text='Change Status', command=lambda: goals_change_status(Goals_table))
+    ChagneStatusButton.place(x=int(goals_x_size/10), y=int(goals_y_size/1.1))
     Goals_table.place(x=int(goals_x_size/15), y=int(goals_y_size/8))
+
+
+    DeleteGoalButton = TkinterCustomButton(master=Goals, text='Delete Goal', command= lambda: goals_delete(Goals_table))
+    DeleteGoalButton.place(x=int(goals_x_size/4.3), y=int(goals_y_size/1.1))
+
+    ShowWIPButton = TkinterCustomButton(master=Goals, text='Working in Progress', command=goals_WIP, width=int(goals_x_size/6))
+    ShowWIPButton.place(x=int(goals_x_size/2.77), y=int(goals_y_size/1.1))
+
     Goals.mainloop()
 
 
