@@ -19,6 +19,7 @@ from tkcalendar import Calendar
 from Goal import Goal
 from CustomedOptionMenu import CustomedOptionMenu
 
+goals_data_db = None
 V = datetime.now().strftime("%V")
 today = date.today().strftime("%d/%m/%Y %H:%M:%S")
 
@@ -179,7 +180,7 @@ class TableDay:
             self.get_data()
             day_entry = tuple([str(hour.get()) for hour in self.all_entries])
 
-            conn = sqlite3.connect(f"database{TIME['MONTH']}-{TIME['WEEK']}-{self.day_open}.db")
+            conn = sqlite3.connect(f"database/{TIME['MONTH']}-{TIME['WEEK']}-{self.day_open}.db")
             c = conn.cursor()
 
             c.execute("""INSERT INTO weekplanner VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", day_entry)
@@ -335,18 +336,18 @@ def check_db_exists(day: str):
 def insert_study(day):
     study_plan = {
         'Monday': (
-        '-', '-', 'TS - CW', 'TS/PRiK', 'PRiK-LAB', 'PRiK - LECT', 'PRiK/IPT', 'IPT', 'TM', 'TM', '-', '-', '-', '-', '-',
+        '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-',
         '-', '-', '-'),
         'Tuesday': (
-            '-', '-', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'TM - LABY', 'TM-LABY', ' TM/BO', 'BO', '-', '-',
+            '-', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', '-', '-', '-', '-', '-',
             '-', '-', '-', '-', '-'),
         'Wednesday': (
-            '-', '-', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', ' WORK', '-', '-', '-', '-', '-', '-', '-', '-'),
+            '-', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', '-', '-', '-', '-', '-', '-', '-', '-','-'),
         'Thursday': (
-            '-', '-', '-', 'IPT - LABY', 'IPT/MO', 'MO-LABY', 'MO-CW', 'MO-CW', 'MO-LECT', 'MO-LECT/AA-laby', 'AA - LABY', 'AA - LABY', '-', '-', '-', '-',
+            '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-',
             '-', '-'),
         'Friday': (
-            '-', '-', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', ' WORK', '-', '-', '-', '-', '-', '-',
+            '-', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', '-', '-', '-', '-', '-', '-', '-',
             '-', '-'),
         'Saturday': (
             '-', '-', '-', '-', '-', '-', '-', '-', '-', ' -', '-', '-', '-', '-', '-', '-',
@@ -540,7 +541,7 @@ def goals_delete(Goals_table):
         conn.close()
 
 
-def goals_WIP(master, goals_table, selected_status='Work in Progress'):
+def goals_selected(master, goals_table, selected_status='Work in Progress'):
     """
     This function querying data from database and showing table only for chosen status
     :param selected_status:
@@ -548,15 +549,22 @@ def goals_WIP(master, goals_table, selected_status='Work in Progress'):
     :param goals_table:
     :return:
     """
-    conn = sqlite3.connect('database/goals.db')
-    c = conn.cursor()
-    c.execute("""SELECT * FROM main_goals WHERE status = ?
-    """, (selected_status,))
-    selected_goals = c.fetchall()
-    print(selected_goals)
+    global goals_data_db
+    if selected_status == "All":
+        goals_data_db = get_goals_data()
+    else:
+        conn = sqlite3.connect('database/goals.db')
+        c = conn.cursor()
+        c.execute("""SELECT * FROM main_goals WHERE status = ?
+        """, (selected_status,))
+        goals_data_db = c.fetchall() #modyfying global variable which contain goals
+
+    master.destroy()
+    Goals()
 
 
 def Goals():
+    global goals_data_db
     Goals = Toplevel()
     """LOGO"""
     Goals.wm_attributes('-transparentcolor', '#ab23ff')
@@ -571,13 +579,12 @@ def Goals():
     goals_label = Label(Goals, image=bg_goals)
     goals_label.place(x=0, y=0)
 
-
     add_button = TkinterCustomButton(master=Goals, text="Add Goal", command=AddGoal)
     add_button.place(x=int(goals_x_size/1.2), y=int(goals_y_size/1.3))
 
     """TABLE OF GOALS"""
     # Querying data from database
-    goals_data_db = get_goals_data()
+    # goals_data_db = get_goals_data()
 
     Goals_table = ttk.Treeview(Goals)
     # Goals_table_label.place()
@@ -607,8 +614,19 @@ def Goals():
     DeleteGoalButton = TkinterCustomButton(master=Goals, text='Delete Goal', command=lambda: goals_delete(Goals_table))
     DeleteGoalButton.place(x=int(goals_x_size/4.3), y=int(goals_y_size/1.3))
 
-    ShowWIPButton = TkinterCustomButton(master=Goals, text='Working in Progress', command=lambda: goals_WIP(Goals, Goals_table, "Work in Progress"), width=int(goals_x_size/6))
+    ShowWIPButton = TkinterCustomButton(master=Goals, text='Working in Progress',
+                    command=lambda: goals_selected(Goals, Goals_table, "Work in Progress"), width=int(goals_x_size/6))
     ShowWIPButton.place(x=int(goals_x_size/2.77), y=int(goals_y_size/1.3))
+
+    ShowAllButton = TkinterCustomButton(master=Goals, text='All', command=lambda: goals_selected(Goals, Goals_table,
+                                                                        "All"), width=int(goals_x_size/10))
+    ShowAllButton.place(x=int(goals_x_size/1.87), y=int(goals_y_size/1.3))
+
+    ShowDoneButton = TkinterCustomButton(master=Goals, text='Done', command=lambda: goals_selected(Goals, Goals_table,
+                                                                                                 "Done"),
+                                        width=int(goals_x_size / 10))
+    ShowDoneButton.place(x=int(goals_x_size / 1.55), y=int(goals_y_size / 1.3))
+
 
     Goals.mainloop()
 
@@ -732,4 +750,5 @@ def main_disp(disp_flag, day_open=None):
 
 
 if __name__ == '__main__':
+    goals_data_db = get_goals_data()
     main_disp(table_look_flag)
