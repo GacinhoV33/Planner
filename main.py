@@ -137,7 +137,7 @@ class Table:
 
     #TODO end rest of dayss/ change it into iterable form
 
-    def write_data_from_entries_into_db(self):
+    def write_data_from_entries_into_db(self, autosave_flag=False):
         try:
             self.get_data()
             for n, day in enumerate(days):
@@ -150,7 +150,8 @@ class Table:
                 c.execute("""INSERT INTO weekplanner VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", day_entry)
                 conn.commit()
                 conn.close()
-            messagebox.showinfo(title="Save", message="Database succesfully updated")
+            if not autosave_flag:
+                messagebox.showinfo(title="Save", message="Database succesfully updated")
         except Exception as e:
             messagebox.showerror(title="Error", message=f"Error: {e}.\nDatabase update failed!!!")
 
@@ -250,6 +251,15 @@ class HourLabels:
             self.label.place(x=30, y=table_pos_y + i*(table_height + 5))
 
 
+def day_to_numb(day_number):
+    if len(day_number) == 2:
+        return day_number
+    elif len(day_number) == 1:
+        return "0"+day_number
+    else:
+        raise ValueError()
+
+
 def Openday(n_button, root):
     """ HELP FUNCTION -> AFTER IMPLEMENTING TOP BUTTONS DELETE IT ! """
     print(n_button)
@@ -336,18 +346,18 @@ def check_db_exists(day: str):
 def insert_study(day):
     study_plan = {
         'Monday': (
-        '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-',
+        '-', '-', 'HUM wykl', 'HUM wykl/BI wykl', 'BI wykl', 'TS wyklad', 'TS wyklad', 'TS laby', 'Ts laby/BI laby', 'BI laby', '-', '-', '-', '-', '-',
         '-', '-', '-'),
         'Tuesday': (
-            '-', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', '-', '-', '-', '-', '-',
+            '-', 'WORK', 'WORK/PLC', 'WORK/PLC', 'WORK', 'WORK', 'WORK', 'WORK/SYS', 'WORK/SYS', '-', '-', '-', '-',
             '-', '-', '-', '-', '-'),
         'Wednesday': (
-            '-', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', '-', '-', '-', '-', '-', '-', '-', '-','-'),
+            '-', '-', 'Sys Rek laby', 'Sys Rek laby/ML', 'ML wykl', '-', 'Embd wykl', 'Embd wykl', 'ML laby', 'ML laby', '-', '-', '-', '-', '-', '-', '-', '-'),
         'Thursday': (
-            '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-',
+            '-', '-', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK/TS', 'WORK/TS', '-', '-', '-', '-', '-', '-',
             '-', '-'),
         'Friday': (
-            '-', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', 'WORK', '-', '-', '-', '-', '-', '-', '-',
+            '-', '-', 'PLC laby', 'PLC laby', 'PLC laby', 'Embd laby', 'Embd laby', '-', '-', 'WORK', 'WORK', 'WORK', '-', '-', '-', '-',
             '-', '-'),
         'Saturday': (
             '-', '-', '-', '-', '-', '-', '-', '-', '-', ' -', '-', '-', '-', '-', '-', '-',
@@ -470,14 +480,6 @@ def AddGoal():
                              day=int(TIME['DAY_NUMB']))
     goal_calendar.place(x=85, y=130)
     StatusMenu.place(x=85, y=325)
-
-    def day_to_numb(day_number):
-        if len(day_number) == 2:
-            return day_number
-        elif len(day_number) == 1:
-            return "0"+day_number
-        else:
-            raise ValueError()
 
     Add_button = TkinterCustomButton(master=Add, text="Create Goal", command=lambda: create_goal(str(entry_name.get()),
                                     str(MenuCategory.var.get()), float(scale_significance.get()),
@@ -654,6 +656,13 @@ def Quit_app(root):
     quit()
 
 
+def change_week(value: int, Root, tab, day_open=None):
+    tab.write_data_from_entries_into_db(True) #autosave
+    TIME['WEEK'] = day_to_numb(str(int(TIME['WEEK']) + value))
+    Root.destroy()
+    main_disp(table_look_flag, day_open)
+
+
 def main_disp(disp_flag, day_open=None):
     """
     Getting data from database into python list.
@@ -736,6 +745,18 @@ def main_disp(disp_flag, day_open=None):
     goals_button = TkinterCustomButton(text="Goals", bg_color="#B4B4B4", fg_color="#FFA511", hover_color="#EEB400",
                                        text_color="#FFFFFF", command=Goals)
     goals_button.place(x=goals_x, y=goals_y)
+
+    """
+    Next/Previous week button -> It changes week for next or previous 
+    Auto save used there to avoid loosing data
+    """
+    next_button = TkinterCustomButton(text="Next Week", bg_color="#B4B4B4", fg_color="#22FF22", hover_color="#EEB400",
+                                       text_color="#FFFFFF", command=lambda: change_week(1, root, table, day_open))
+    next_button.place(x=int(X_size//1.65), y=int(Y_size//1.1))
+
+    previous_button = TkinterCustomButton(text="Previous Week", bg_color="#DDDDCC", fg_color="#BF2222", hover_color="#EEB400",
+                                      text_color="#FFFFFF", command=lambda: change_week(-1, root, table, day_open))
+    previous_button.place(x=int(X_size//3.5), y=int(Y_size//1.1))
 
     """
     QUIT BUTTON -> Shut down programm (maybe in future it takes data from entries and save it in database.
