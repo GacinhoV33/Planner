@@ -155,6 +155,22 @@ class Table:
         except Exception as e:
             messagebox.showerror(title="Error", message=f"Error: {e}.\nDatabase update failed!!!")
 
+    def get_info_about_time(self,):
+        """
+        This function takes information about how much time you spend on specific task
+        User don't need to make it, it automatically runs when application starts, and update database
+        1. Take name of every goal in database and put it one list
+        2. Take current data, and data of creating goal
+        3. For every week from step 2:
+            - Get whole data from every hour
+            - If name of goal is mention in specific hour increment curr_time
+            - If / found in name incerement by 0.5
+            -
+        4. Update database
+        :return:
+        """
+        #TODO
+        pass
 
 class TableDay:
 
@@ -383,7 +399,7 @@ def get_data_from_db(day: str):
     return data
 
 
-def time_left(time_start, time_end):
+def time_left(time_start, time_end): #TODO
     value = ''
     y_diff = int(time_end[:4]) - int(time_start[0:4])
     m_diff = int(time_end[5:7]) - int(time_start[5:7])
@@ -413,8 +429,9 @@ def time_left(time_start, time_end):
     return value
 
 
-def create_goal(name: str, category: str, significance: float, start_date: str, end_date: str, status: str="WIP"):
-    goal = Goal(name, category, significance, start_date, end_date, status)
+def create_goal(name: str, category: str, significance: float, start_date: str, end_date: str, time: float=5.0,
+                curr_time: float = 0.0, status: str="WIP"):
+    goal = Goal(name, category, significance, start_date, end_date, time, curr_time, status)
     goal.add_to_database()
 
 
@@ -444,6 +461,8 @@ def get_goals_data():
         significance REAL,
         date_start text,
         date_end text,
+        time REAL,
+        curr_time REAL,
         status text
         )""")
         return list()
@@ -485,7 +504,7 @@ def AddGoal():
                                     str(MenuCategory.var.get()), float(scale_significance.get()),
                                     f'{TIME["YEAR"]}-{TIME["MONTH"]}-{TIME["DAY_NUMB"]}',
       f'20{goal_calendar.get_date().split("/")[2]}-{day_to_numb(goal_calendar.get_date().split("/")[0])}-{day_to_numb(goal_calendar.get_date().split("/")[1])}',
-                                                                                                 str(StatusMenu.var.get())))
+                                                2.0, 0.0, str(StatusMenu.var.get()))) # 2.0 is time
 
     Add_button.place(x=450, y=300)
 
@@ -590,9 +609,9 @@ def Goals():
 
     Goals_table = ttk.Treeview(Goals)
     # Goals_table_label.place()
-    Goals_table['columns'] = ('Goal', 'Category', 'Significance', 'Start date', 'End date', 'Status', 'Time left')
+    Goals_table['columns'] = ('Goal', 'Category', 'Significance', 'Start date', 'End date', 'Time', 'Status', 'Time left')
 
-    goals_atributes_lst = ['Goal', 'Category', 'Significance', 'Start date', 'End date', 'Status', 'Time left']
+    goals_atributes_lst = ['Goal', 'Category', 'Significance', 'Start date', 'End date', 'Time', 'Status', 'Time left']
 
     """HEADERS OF COLUMNS"""
     Goals_table.column("#0", width=0, stretch=NO)
@@ -601,9 +620,10 @@ def Goals():
         Goals_table.heading(atribute, text=atribute, anchor=CENTER)
 
     for goal_id, goal in enumerate(goals_data_db):
-        Goals_table.insert(parent='', index='end', iid=goal_id, text='', values=(*goal, time_left(goal[3], goal[4])))
+        #TODO color depnds on goal time spend green/orange/red
+        Goals_table.insert(parent='', index='end', iid=goal_id, text='', values=(*goal[:5], f'{goal[6]} / {goal[5]}', goal[7], time_left(goal[3], goal[4])))
 
-    Goals_table.place(x=int(goals_x_size/15), y=int(goals_y_size/8))
+    Goals_table.place(x=int(goals_x_size/45), y=int(goals_y_size/10))
     """Buttons for changing goals status"""
 
     StatusMenu = CustomedOptionMenu(Goals, 'Select Status', *lst_of_statuses)
