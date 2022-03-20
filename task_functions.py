@@ -1,7 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import os
-# import timeit
 import sqlite3
 """ 
 This module contains functions that generate tasks report in pdf 
@@ -9,7 +8,8 @@ It also contains function that scrapping through database and automatically upda
 """
 #TODO 1: Check time of operation -> It may be big due to 3/4 loops
 #     2: Implement execptions to avoid situation of empty db etc.
-#     3: GenerateReport and DeleteOldDatabases needs to be implemented 
+#     3: GenerateReport and DeleteOldDatabases needs to be implemented
+#     4: Implement mechanism that run UpdateTasksTime each night, and not repeat days in counting
 
 def GenerateReport():
     pass
@@ -34,31 +34,46 @@ def UpdateTasksTime():
     c_goals = conn.cursor()
     c_goals.execute("""SELECT * FROM main_goals""")
     goals_data = c_goals.fetchall()
-    # print(goals_data)
-    c_goals.close()
 
     hours_data = list()
     """ STEP 2 """
     for file_name in os.listdir('database/'):
         if file_name != "goals.db":
-            # print(file_name)
             conn_hours = sqlite3.connect(f'database/{file_name}')
             c_hours = conn_hours.cursor()
             c_hours.execute(""" SELECT * FROM weekplanner""")
             hours_data.append(c_hours.fetchall())
             c_hours.close()
-            # print(hours_data)
-            # c.commit()
 
-
+    TaskDictUpdate = dict()
     """ Getting names of all tasks """
     goal_names = [goal[0] for goal in goals_data]
+    """ STEP 4 """
     for goal_name in goal_names:
         for day in hours_data:
             for hour in day:
                 if goal_name in hour:
-                    print("I've found that")
+                    if '/' in hour:
+                        try:
+                            TaskDictUpdate[goal_name] += 0.5 # if hour is splitted
+                        except:
+                            TaskDictUpdate[goal_name] = 0.5
+                    else:
+                        try:
+                            TaskDictUpdate[goal_name] += 1 # if there's one hour for task
+                        except:
+                            TaskDictUpdate[goal_name] = 1
+    """ Updating DataBase """
+    """ STEP 5 """
+    for key, value in TaskDictUpdate.items():
+       c_goals.execute("""UPDATE main_goals SET curr_time = ? + curr_time
+                    WHERE name = ?""",
+        (float(value), key))
+    """ STEP 6 """
+    conn.commit() # commiting changes in hours
+    """ STEP 7 """
+    c_goals.close()
 
 
-# print(timeit.timeit(UpdateTasksTime()))
-UpdateTasksTime()
+if __name__ == "__main__":
+    UpdateTasksTime()
