@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import os
 import sqlite3
+
 """ 
 This module contains functions that generate tasks report in pdf 
 It also contains function that scrapping through database and automatically update time of tasks 
@@ -38,6 +39,7 @@ def UpdateTasksTime():
     hours_data = list()
     """ STEP 2 """
     for file_name in os.listdir('database/'):
+        database / {TIME['MONTH']} - {TIME['WEEK']} - {day}.db
         if file_name != "goals.db":
             conn_hours = sqlite3.connect(f'database/{file_name}')
             c_hours = conn_hours.cursor()

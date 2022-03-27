@@ -20,6 +20,7 @@ from Goal import Goal
 from CustomedOptionMenu import CustomedOptionMenu
 
 goals_data_db = None
+selection_of_key_sort = 2
 V = datetime.now().strftime("%V")
 today = date.today().strftime("%d/%m/%Y %H:%M:%S")
 
@@ -46,7 +47,7 @@ DAY_DICT = {"0" : "Monday",
             "5" : "Saturday",
             "6" : "Sunday"}
 
-DAY_DICT_INV = {v: k for k, v in DAY_DICT.items()}# Inverted Dict of Days
+DAY_DICT_INV = {v: k for k, v in DAY_DICT.items()} # Inverted Dict of Days
 
 """Lists needed to dropwdown menus"""
 lst_of_categories = ['Sport', 'Cooking', 'Learning', 'Studies', 'Work', 'Fun', 'Workout']
@@ -584,6 +585,28 @@ def goals_selected(master, goals_table, selected_status='Work in Progress'):
     Goals()
 
 
+def UpdateTable(root, user_choice):
+    global selection_of_key_sort
+    Sort_keys = ["Category", "Significance", "Start date", "End date", "Status"]
+    if user_choice == "Category":
+        selection_of_key_sort = 1
+    elif user_choice == "Significance":
+        selection_of_key_sort = 2
+    elif user_choice == "Status":
+        selection_of_key_sort = 6
+    elif user_choice == "Start date":
+        selection_of_key_sort = 3
+    elif user_choice == "End date":
+        selection_of_key_sort = 4
+    elif user_choice == "Time left":
+        selection_of_key_sort = 7
+
+    goals_data_db.sort(key= lambda v: v[selection_of_key_sort], reverse=True)
+    root.destroy()
+
+    Goals()
+
+
 def Goals():
     global goals_data_db
     Goals = Toplevel()
@@ -618,6 +641,15 @@ def Goals():
     for atribute in goals_atributes_lst:
         Goals_table.column(atribute, anchor=CENTER, width=120)
         Goals_table.heading(atribute, text=atribute, anchor=CENTER)
+
+
+    """ Sorting goals by significance """
+    Sort_keys = ["Category", "Significance", "Start date", "End date", "Status", "Time left"]
+
+    SortMenu = CustomedOptionMenu(Goals, 'Sort by', *Sort_keys)
+    SortMenu.place(x=int(goals_x_size / 6.2), y=int(goals_y_size / 26.17))
+    SortButton = TkinterCustomButton(master=Goals, text="Sort", command= lambda: UpdateTable(Goals, SortMenu.var.get()))
+    SortButton.place(x=int(goals_x_size / 40.5), y=int(goals_y_size / 30.17))
 
     for goal_id, goal in enumerate(goals_data_db):
         #TODO color depnds on goal time spend green/orange/red
